@@ -9,12 +9,6 @@ executor:
 resource_class: << parameters.resource_class >>
 
 parameters:
-  base-revision:
-    type: string
-    default: "main"
-    description: >
-      The revision to compare the current one against for the purpose
-      of determining changed files.
   mapping:
     type: string
     default: ""
@@ -54,8 +48,20 @@ steps:
       steps:
         - attach_workspace:
             at: << parameters.workspace_path >>
+  - run:
+      name: Determine base-revision
+      command: |
+        GIT_STATUS=$(git checkout << pipeline.git.base_revision >> || echo $?)
+        BASE_REVISION_TEST=<< pipeline.git.base_revision >>
+        if [[ "${GIT_STATUS}" -ne 0 ]] || [[ -z "${BASE_REVISION_TEST}" ]]
+        then
+          echo "Using BASE_REVISION=<< pipeline.git.branch >>"
+          echo "export BASE_REVISION=<< pipeline.git.branch >>" >> ${BASH_ENV}
+        else
+          echo "Using BASE_REVISION=<< pipeline.git.base_revision >>"
+          echo "export BASE_REVISION=<< pipeline.git.base_revision >>" >> ${BASH_ENV}
+        fi            
   - set-parameters:
-      base-revision: << parameters.base-revision >>
       mapping: << parameters.mapping >>
   - continuation/continue:
       configuration_path: << parameters.config-path >>
